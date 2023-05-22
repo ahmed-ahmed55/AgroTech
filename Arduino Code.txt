@@ -1,0 +1,189 @@
+/* This code was written entirely by Ahmed Ahmed and Amr elagmal------------- capstone project------ STEM 6th of October high school for boys
+ This is the second section of our feedback system, which is the arduino section. 
+ In this section, the arduino recieve the signal of 3.3 v of opertaing all of the actuators from ESP. Then, the arduino gives 5v signal to the acuators of all systems.  
+ Each part of our system has a comment that explains the purpose of it.
+ Note: some relays are reversed */
+//////////////////////////////////////////////////////////////////////////////Defining pin ///////////////////////////////////////////////////////////////////////////////////
+  # define lightin 11 // intput  Signal from ESP----- light 
+  # define fanin  2 // input signal from ESP---- fan 
+  # define mistin  3 // input  signal from ESP----- mist 
+  # define shading_close_input  4 // input signal from ESP------close shading 
+  # define  shading_open_inputH  5 // input  signal from ESP------- open shading 
+  # define  shading_close_output  6 // output signal from Arduino----- close shading 
+  # define  shading_open_output  7 // output signal from Arduino-------open shading
+  # define lightout  8  // output signal from Arduino------ LED Light 
+  # define  mistout  9 // output from arduino---------- MIST 
+  # define  fanout  10  // output From Arduino-------- Ventilation 
+  # define light_intinsity_pin A0 // the analog pin from arduino to read the light intinsity
+//////////////////////////////////////////////////////////////////////////////Defining variables ///////////////////////////////////////////////////////////////////////////////////
+  int ESP_Light_signal;// signal from ESP (LED light)
+  int ESP_fan_signal;// signal from ESP (Fan)
+  int ESP_mist_signal; // signal from ESP (mist)
+  int period_motor_forward = 16000; //Shading close period
+  int period_motor_backward = 15000; // Shading open period 
+  int shading_open_signal;  
+  int shading_close_signal;  
+  int period_LED_open= 15000 ;// LED open Period
+  int period_LED_close= 11000; // LED open Period
+  int light_intinsity;// The value of light intinsity
+  long light_intinsity_max = 350; // Light intensity (highest)
+  long light_intinsity_min=250; // Light intensity (lowest)
+  long rtime = millis(); // Define time in shading system
+  bool Tried = true;
+ // time of LED 
+  long gap = 1000; // Period of opening and closing the system
+void setup() // define all pins 
+  {
+    Serial.begin(115200);
+    pinMode(lightin, INPUT_PULLUP); // intput  Signal from ESP----- light 
+    pinMode(fanin, INPUT); // input signal from ESP---- fan 
+    pinMode(mistin, INPUT);// input  signal from ESP----- mist 
+    pinMode(shading_close_input, INPUT); // input signal from ESP------close shading 
+    pinMode(shading_open_input , INPUT);  // input  signal from ESP------- open shading 
+    pinMode(shading_close_output , OUTPUT);// output signal from Arduino----- close shading  
+    pinMode(shading_open_output , OUTPUT); // output signal from Arduino-------open shading 
+    pinMode(lightout, OUTPUT);    // output s  ignal from Arduino------ LED Light 
+    pinMode(mistout, OUTPUT);// output from arduino---------- MIST 
+    pinMode(fanout, OUTPUT); // output From Arduino-------- Ventilation 
+  }
+
+void shading_close_timer() // Shading timer close 
+  { 
+    while (millis() < rtime + period_motor_forward)
+      {
+        digitalWrite(shading_close_output , HIGH);
+      } 
+      digitalWrite(shading_close_output , LOW);
+  }
+void shading_open_timer() // Shading timer open
+  {
+    while (millis() < rtime + period_motor_backward)
+    {
+      digitalWrite(shading_open_output , HIGH);
+    }
+    digitalWrite(shading_open_output , LOW);
+  }
+void LED_period_open () // LED timer (open) system 
+  {
+    while (millis() <= rtime + period_LED_open && Tried)
+      {
+        digitalWrite(lightout, LOW); 
+        light_intinsity = analogRead(light_intinsity_pin);        
+        if(light_intinsity>=light_intinsity_max)
+        {
+          break;
+        }    
+      }
+    digitalWrite(lightout, HIGH);    
+    Tried = false;  
+  }
+
+
+void LED_period_close () // LED timer (close) system 
+  {
+    while (millis() < rtime + period_LED_close)
+    {
+      digitalWrite(lightout, HIGH);
+    }
+    digitalWrite(lightout, LOW);
+  }
+
+void mist()  // mist maker system
+  { 
+    ESP_mist_signal=digitalRead(mistin)    ;
+    if (ESP_mist_signal==HIGH)
+    {
+    digitalWrite(mistout, HIGH);    
+    }
+    else{
+    digitalWrite(mistout, LOW);    
+    }
+  }
+void light()  // LED system
+  {
+    
+    light_intinsity = analogRead(light_intinsity_pin);
+    ESP_Light_signal = digitalRead(lightin);
+    //Serial.println(ESP_Light_signal);
+    //Serial.println(light_intinsity);
+    //Serial.println(Tried);
+    
+    if (ESP_Light_signal==HIGH)
+    {
+      digitalWrite(lightout, LOW); // operate the LED system
+      Serial.println("Light ON");
+    }
+      
+      {
+        digitalWrite(lightout, HIGH); //close the LED system
+        Serial.println("Light OFF");
+      }}
+    
+
+    if (light_intinsity <= light_intinsity_min)  // when the light insinsity drops, the LED system is operated
+    {
+      digitalWrite(lightout, LOW); // operate the LED system 
+      rtime = millis(); // reset time 
+      
+      LED_period_open();        // void period of opening
+      //Serial.println("Dark");  
+    }
+    if(light_intinsity>=light_intinsity_max)
+    {
+      Tried = true;
+      //Serial.println("Light");     
+    
+    }    
+  }
+void fan() // Ventilation system
+  {
+    ESP_fan_signal = digitalRead(fanin);
+      if (ESP_fan_signal == HIGH)
+      {
+        digitalWrite(fanout, LOW); // operate ventilation system
+      }
+      else
+      {
+        digitalWrite(fanout, HIGH); // close ventilation system
+      }
+  }
+void shading()
+  {shading_close_signal = digitalRead(shading_close_input);
+  shading_open_signal = digitalRead(shading_open_input);
+  
+  if (shading_close_signal==HIGH && shading_open_signal== LOW)//covered == 0
+  {
+    rtime = millis();
+    shading_close_timer(); //OPEN
+    Serial.println("ahmed");
+  }
+  
+  if (shading_open_signal==HIGH && shading_close_signal== LOW)//covered == 1
+  {
+    rtime = millis();
+    shading_open_timer(); //CLOSE
+  }
+  if (shading_close_signal==1 && shading_open_signal==1)
+  { 
+    Serial.println("Both buttons are open");
+  }  }  // shading sysytem
+
+void loop() 
+  { 
+    mist(); // mist maker system
+    light();
+    fan();  // ventilation system
+    //light system 
+    shading();  // shading system
+     //Serial monitoring system
+     /* Serial.print("forward_motor_signal = ");
+      Serial.println(shading_close_input);
+      Serial.print("back_motor_signal = ");
+      Serial.println(shading_open_input);
+      Serial.print("ESP_mist_signal = ");
+      Serial.println(ESP_mist_signal);
+      Serial.print("ESP_Light_signal = ");
+      Serial.println(ESP_Light_signal);
+      Serial.print("ESP_fan_signal = ");
+      Serial.println(ESP_fan_signal);  */
+  }

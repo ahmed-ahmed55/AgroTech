@@ -1,0 +1,274 @@
+
+/*   --------------------------------------------------------------------------- AgroTech-------------------------------------------------------------------------------
+This code was written entirely by Ahmed Ahmed, Belal Bahaa, and Amr Elgamal------------- capstone project (group 228)------ STEM 6th of October high school for boys
+This is the first section of our feedback system, which is the ESP 8266 section. 
+ In this section, the code operates the feedback system, controting, humidity, temprature, and light intinsity. Also, It includes the configration of the system with Blynk.
+ Each part of our system has a comment that explains the purpose of it.
+ Note: some relays are reversed 
+*/ 
+// Configration of the sytem with Blynk
+  #define BLYNK_PRINT Serial
+  #include <ESP8266WiFi.h> // Wifi library
+  #include <BlynkSimpleEsp8266.h> // Blynk Library 
+  #include <DHT.h> // DHT library 
+  #define BLYNK_TEMPLATE_ID "TMPL0G0D3HxQ" // blynk authentication
+  #define BLYNK_TEMPLATE_NAME "light"
+  #define BLYNK_AUTH_TOKEN "W_Xw-vhBAhR8LiApB4R-J4gOdHpQxpbj"
+  char auth[] = BLYNK_AUTH_TOKEN;
+  char ssid[] = "ahmed";      //   wifi name
+  char pass[] = "1234567899"; // wifi password
+///////////////////////////////////////////////// Define pins//////////////////////////////////////
+  #define light D7 // Output Light LED 
+  #define fan D1 // Output fan 
+  #define mist D2 // mist output
+  #define shading_close_output  D3 // Output shading close 
+  #define shading_open_output D4 // Output shading open
+  #define DHTPIN22 D6 //Connected to DHT22
+  #define DHTTYPE22 DHT22
+  #define DHTPIN11 D5// Connected to the DHT11
+  #define DHTTYPE11 DHT11 
+  #define light_intensity_pin A0 
+//Variables
+  float Humidity_INDOOR; // Humidity from DHT22
+  float Temprature_INDOOR; // Temp. from DHT22
+  float Humidity_OUTDOOR; // Humidity from DHT11
+  float Temprature_OUTDOOR; // Temprature from DHT11
+  float  light_intensity;//v9
+  int Blynk_fan;//v4
+  int Blynk_mist;//v5
+  int Blynk_light; //v6
+  int shading_close_blynk;//v7  
+  int shading_open_blynk;//v8
+  BlynkTimer timer;
+  DHT dht22(DHTPIN22, DHTTYPE22);
+  DHT dht11(DHTPIN11, DHTTYPE11);
+
+void sendSensor22() {
+Humidity_INDOOR = dht22.readHumidity(); // Read from DHT sensor
+Temprature_INDOOR = dht22.readTemperature();  // Read from DHT Sensor 
+  if (isnan( Humidity_INDOOR) || isnan(Temprature_INDOOR)) {  //is isnan means that the reading is not a number.... or the sensor is not working
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+  Blynk.virtualWrite(V0, Temprature_INDOOR);  // Connected to V0 channel
+  Blynk.virtualWrite(V1,  Humidity_INDOOR); // Connected to V1 channel 
+  Serial.print(" INDOOR Temperature : ");
+  Serial.print(Temprature_INDOOR);
+  Serial.print("   INDOOR Humidity : ");
+  Serial.println(Humidity_INDOOR);
+  }
+void sendSensor11() {
+ Humidity_OUTDOOR = dht11.readHumidity(); // Read from DHT 11
+  Temprature_OUTDOOR  = dht11.readTemperature();  // Read from DHT 11
+
+  if (isnan(Humidity_OUTDOOR) ||  isnan(Temprature_OUTDOOR )) {  //is isnan means that the reading is not a number.... or the sensor is not working
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+ Blynk.virtualWrite(V2, Temprature_OUTDOOR );  // its important to connect to the connect to the correct V channel
+  Blynk.virtualWrite(V3, Humidity_OUTDOOR);  
+  Serial.print("OUTDOOR Temperature : ");
+  Serial.print(Temprature_OUTDOOR );
+  Serial.print("OUTDOOR  Humidity : ");
+  Serial.println(Humidity_OUTDOOR);
+  }
+
+void setup() {
+  Serial.begin(115200);
+  Blynk.begin(auth, ssid, pass);
+  dht11.begin(); // initialize DHT11
+  dht22.begin();  // initialize DHT11
+  pinMode(shading_close_output, OUTPUT);
+  pinMode(shading_open_output, OUTPUT);
+  pinMode(light, OUTPUT);
+  pinMode(mist, OUTPUT);
+  pinMode(fan, OUTPUT);
+  timer.setInterval(10L, sendSensor11); // read from DHT11 every 1 sec.
+  timer.setInterval(10L, sendSensor22);// read from DHT22 every 1 sec.
+  }
+
+BLYNK_CONNECTED(){
+   Blynk.syncVirtual(V4);
+  Blynk.syncVirtual(V5);
+  Blynk.syncVirtual(V6);
+  Blynk.syncVirtual(V7);
+   Blynk.syncVirtual(V8);
+  }
+  BLYNK_WRITE(V4)
+  {
+  Blynk_fan=param.asInt();  
+  }
+  BLYNK_WRITE(V5)
+  {
+  Blynk_mist=param.asInt();
+
+  }
+   BLYNK_WRITE(V6)
+  {
+  Blynk_light=param.asInt();
+  }
+   BLYNK_WRITE(V7)
+  {
+  shading_close_blynk=param.asInt();
+  }
+   BLYNK_WRITE(V8)
+  {
+   shading_open_blynk=param.asInt();
+  }
+
+
+//Blynk control
+  void Blynk_control(){
+    if (Blynk_fan==1)
+    {
+      digitalWrite(fan, HIGH);
+    }
+    else
+    {
+      digitalWrite(fan, LOW);
+    }
+
+    if (Blynk_mist==1)
+    {
+      digitalWrite(mist, HIGH);
+    }
+    else
+    {
+      digitalWrite(mist, LOW);
+    }
+
+    if (Blynk_light==1)
+    {
+      digitalWrite(light, HIGH);
+    }
+    else
+    {
+      digitalWrite(light, LOW);
+    }
+    if (shading_close_blynk==1)
+    {
+      digitalWrite(shading_close_output, HIGH); //D5 OPen
+    }
+    else if(shading_close_blynk==0)
+    { 
+      digitalWrite(shading_close_output, LOW); //D5 OPen    
+    }
+
+    if (shading_open_blynk==1) 
+    { 
+      digitalWrite(shading_open_output, HIGH); // D4 Close
+    }
+    else if (shading_open_blynk==0)
+    { 
+      digitalWrite(shading_open_output, LOW); // D Close
+    }}
+    
+// Feedback conditions and their corresponding output to actuators.
+  void conditions(){
+      if (Temprature_INDOOR > 33) { // Temperature is greater than the admitted range
+        if ( Humidity_INDOOR > 90  ){ // The humidity indoor is greater than 90 %
+          digitalWrite(mist, HIGH);
+          digitalWrite(fan, HIGH);
+        }
+        else if (Humidity_INDOOR < 70){ // The humidity indoor is less than 70%
+          digitalWrite(mist, HIGH);
+          digitalWrite(fan, LOW);
+        }
+        else if (70 <  Humidity_INDOOR < 90) { // The humidity is in the optimum range
+          
+            if (15 < Temprature_OUTDOOR  < 27 || Blynk_fan==1){
+            digitalWrite(fan, HIGH); 
+            if (Blynk_mist==0)
+            {
+              digitalWrite(mist, LOW);      
+            }            
+            }
+            else if (Temprature_OUTDOOR >= 27)
+            {
+            digitalWrite(mist, HIGH);
+            digitalWrite(fan, HIGH);            
+            }
+            if (isnan(Humidity_OUTDOOR) ||  isnan(t11))
+            { 
+            digitalWrite(mist, HIGH);
+            digitalWrite(fan, HIGH);
+          
+            } 
+          digitalWrite(mist, HIGH);       
+        }    
+      }
+      if (Temprature_INDOOR < 28) { // The temperature is lower than the optimum range
+        if ( Humidity_INDOOR > 90 || Blynk_fan==1){ // if the humidity is higher than 90%, activate the ventilation system. Furthermore, isolation is applied.
+          digitalWrite(fan, HIGH);
+          if (Blynk_mist==0)
+          {
+            digitalWrite(mist, LOW);  
+          }
+        }
+        else if ( Humidity_INDOOR < 70 || Blynk_mist==1){ // if the humidity is lower than the given range, activate both fogging and ventilation systems
+          digitalWrite(mist, HIGH);
+          digitalWrite(fan, HIGH);   // Isolation is also applied as well.
+        }       
+      }
+      if (28 < Temprature_INDOOR < 33) { // The temperature is within the optimum range.
+        if ( Humidity_INDOOR > 90){ // If the humidity indoor is higher than 90%, ventilation system will be activated 
+          digitalWrite(fan, HIGH);
+          if (Blynk_mist==0)
+          { 
+            digitalWrite(mist, LOW);       
+          }
+        else if (60 <  Humidity_INDOOR < 90) // If the humidity is in the optimum range, all systems are off.
+         { 
+          if (Blynk_mist==0)
+          {
+            digitalWrite(mist, LOW);
+          }
+          else if (Blynk_fan==0)
+          {
+            digitalWrite(fan, LOW);
+          }
+        }
+              
+        }
+        else if (Humidity_INDOOR < 60){ // If the humidity is lower than 60%, the fogging system is activated.
+          digitalWrite(mist, HIGH);
+          digitalWrite(fan, LOW);
+          }
+          else if (isnan(Humidity_OUTDOOR) ||  isnan(Temprature_OUTDOOR ))
+          { 
+            digitalWrite(mist, HIGH);
+            digitalWrite(fan, LOW);
+          }     
+      }
+    } 
+//Temperature
+  void Temperature(){
+    int condition = 0;
+    if(Temprature_INDOOR >= 32 && condition == 0) {
+      digitalWrite(shading_close_output, HIGH); // D6 Close
+      digitalWrite(light, HIGH);
+      condition  = 1;     
+    }
+    else if (Temprature_INDOOR < 32 && condition == 1)
+    {
+      digitalWrite(shading_close_output, HIGH); //D5 OPen
+      if (Blynk_light==0)
+      {
+        digitalWrite(light, LOW);
+      }
+      condition  = 0;
+    }
+  } 
+
+void loop() {
+
+light_intensity=analogRead(light_intensity_pin); 
+  Blynk.virtualWrite(V9,light_intensity ); 
+  Blynk.run();
+  timer.run();
+  Serial.print("light_intensity");
+  Serial.println(light_intensity);
+  //conditions();
+  Blynk_control();
+ // Temperature();
+} 
